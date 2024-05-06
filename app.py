@@ -412,24 +412,25 @@ if selected == 'Data Analysis':
             
             # Hàm check outliers
             def check_outliers_plot(my_df, selected_column):
-                # Tính giá trị Q1, Q3 và IQR
-                Q1 = my_df[selected_column].quantile(0.25)
-                Q3 = my_df[selected_column].quantile(0.75)
-                IQR = Q3 - Q1
-                
-                # Tìm giá trị ngoại lệ dưới và trên
-                lower_bound = Q1 - 1.5 * IQR
-                upper_bound = Q3 + 1.5 * IQR
-                
-                # Tạo DataFrame chứa thông tin về outlier
-                outliers = my_df[(my_df[selected_column] < lower_bound) | (my_df[selected_column] > upper_bound)]
-                
-                if outliers.empty:
-                    st.write("No outliers found.")
-                else:
-                    # Vẽ biểu đồ box plot
-                    fig = px.box(my_df, y=selected_column, title=f'Box plot of {selected_column}')
-                    st.plotly_chart(fig)
+                if my_df[selected_column].dtype == "int64" or my_df[selected_column].dtype == "float64" or my_df[selected_column].dtype == "float32" or my_df[selected_column].dtype == "int32":
+                    # Tính giá trị Q1, Q3 và IQR
+                    Q1 = my_df[selected_column].quantile(0.25)
+                    Q3 = my_df[selected_column].quantile(0.75)
+                    IQR = Q3 - Q1
+                    
+                    # Tìm giá trị ngoại lệ dưới và trên
+                    lower_bound = Q1 - 1.5 * IQR
+                    upper_bound = Q3 + 1.5 * IQR
+                    
+                    # Tạo DataFrame chứa thông tin về outlier
+                    outliers = my_df[(my_df[selected_column] < lower_bound) | (my_df[selected_column] > upper_bound)]
+                    
+                    if outliers.empty:
+                        st.write("No outliers found.")
+                    else:
+                        # Vẽ biểu đồ box plot
+                        fig = px.box(my_df, y=selected_column, title=f'Box plot of {selected_column}')
+                        st.plotly_chart(fig)
                     
             def remove_outliers(my_df, selected_column):
                 # Tính giá trị Q1, Q3 và IQR
@@ -459,21 +460,13 @@ if selected == 'Data Analysis':
                 return href
 
             # Hàm xử lý duplicate
-            def handle_duplicates(my_df, subset_columns):
-                # Tìm các hàng trùng lặp
-                duplicates = my_df[my_df.duplicated(subset=subset_columns, keep=False)]
-                st.write("Duplicates found before handling:")
-                st.write(duplicates)
-                            
-                if duplicates.empty:
-                    st.write("No duplicates found.")
-                    return my_df, False  # Không có duplicate
-                else:
-                    # Xóa các hàng trùng lặp
-                    my_df = my_df.drop_duplicates(subset=subset_columns, keep='first')
-                    st.write("Duplicates handled successfully.")
-                    return my_df, True  # Đã xử lý duplicate
-           
+            def handle_duplicates(my_df):
+                
+                # Drop duplicates
+                my_df.drop_duplicates(keep= 'first', inplace=True)
+                
+                return my_df  
+                      
             # Hàm mã hóa biến phân loại bằng phương pháp One-Hot Encoding
             def one_hot_encode(my_df, column):
                 encoder = OneHotEncoder()
@@ -495,11 +488,6 @@ if selected == 'Data Analysis':
                 my_df[column] = encoder.fit_transform(my_df[column])
                 return my_df               
             
-
-            
-
-
-                        
             # Kiểm tra nếu session state chưa tồn tại, khởi tạo mới
             if 'my_df' not in st.session_state:
                 st.session_state.my_df = pd.DataFrame()
@@ -540,48 +528,45 @@ if selected == 'Data Analysis':
             
             with tab3:
                 st.header("Handle Duplicates")
-                            
-                # Tạo biến trạng thái để theo dõi việc xử lý duplicate
-                handled = False
-                            
-                if st.button("Check for Duplicates"):
-                    # Xác định và hiển thị thông tin về các hàng duplicate
-                    duplicates = st.session_state.my_df[st.session_state.my_df.duplicated(keep=False)]
-                                
-                    if duplicates.empty:
-                        st.write("No duplicates found.")
+
+                if st.button("Handle Duplicates"):
+                    
+                    duplicate = st.session_state.my_df[st.session_state.my_df.duplicated(keep=False)]
+                    
+                    if duplicate.empty:
+                        st.write("Don't have duplicate")
                     else:
-                        st.write("Duplicates found:")
-                        st.write(duplicates)
-                        # Hiển thị nút để xử lý duplicate
-                        if st.button("Handle Duplicates"):
-                            # Xử lý duplicate
-                            st.session_state.my_df, handled = handle_duplicates(st.session_state.my_df, st.session_state.my_df.columns)
-                            
-                # Hiển thị thông báo khi xử lý duplicate thành công
-                if handled:
-                    st.write("Duplicates handled successfully.")
+                        st.write('row sum: {}'.format(len(st.session_state.my_df)))
+                        #st.write('Have {} duplicates'.format(df.duplicated().sum()))  
+                        
+                        st.session_state.my_df = handle_duplicates(st.session_state.my_df)
+                        
+                        st.write('number of goods remaining after processing', len(st.session_state.my_df))
+                                    
 
 
             with tab4:
                 st.header("Remove Rows with Null")
                 
                 col1 , col2 = st.columns(2)
+    
                 with col1:
                     st.write("Kiểm tra missing values")
                     st.write(st.session_state.my_df.isnull().sum())
 
                 with col2:
                     selected_columns = st.multiselect("Select columns to remove rows with null values:", st.session_state.my_df.columns, key="RemoveRowsNull")
-                            
-                    # Tạo nút để xóa các hàng có giá trị thiếu trong các cột được chọn
-                    if st.button("Remove Rows with Null"):
-                        mask = st.session_state.my_df[selected_columns].notnull().all(axis=1)
                     
-                        st.session_state.my_df = st.session_state.my_df[mask]
-                        st.success("Removed rows with null values in selected columns.")
-                        st.write("Updated missing values:")
-                        st.write(st.session_state.my_df.isnull().sum())
+                    # Lấy mask cho các hàng có giá trị null trong các cột đã chọn
+                    mask = st.session_state.my_df[selected_columns].isnull().any(axis=1)
+                    
+                    # Lấy DataFrame chứa các hàng có giá trị null
+                    rows_with_null = st.session_state.my_df[mask]
+                    
+                    if st.button("Remove Rows with Null"):
+                        # Xóa các hàng có giá trị null
+                        st.session_state.my_df = st.session_state.my_df.drop(rows_with_null.index)
+                        st.write("Rows with null values removed successfully.")
             
             with tab5:
                 st.header("Change Data Types")
@@ -606,13 +591,17 @@ if selected == 'Data Analysis':
                 
                 selected_column = st.selectbox("Column", st.session_state.my_df.columns, key="outlier_select")
                 
-                if st.button('Check Outliers'):
+                # tạo 1 container chứa biểu đồ trong trường hợp có outlier
+                container_diagram =  st.empty()
+                
+                with container_diagram.container():
                     check_outliers_plot(st.session_state.my_df, selected_column)
                     
-                    # Hiển thị nút để xử lý outliers
-                    if st.button('Handle Outliers'):
-                        st.session_state.my_df = remove_outliers(st.session_state.my_df, selected_column)
-                        st.success("Outliers handled successfully.")
+                if st.button('Handle Outliers'):
+                    st.session_state.my_df = remove_outliers(df, selected_column)
+                    st.write('remove successfully')
+                    # sau khi remove successfully thì container sẽ được làm rỗng
+                    container_diagram.empty()
             with tab7:
                 st.header("Encode Categorical Variables")
                 
