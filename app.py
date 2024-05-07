@@ -3,14 +3,23 @@ import pandas as pd
 import pickle
 import numpy as np
 import streamlit as st
+import seaborn as sns
 import plotly.express as px
 from streamlit_option_menu import option_menu
 import matplotlib.pyplot as plt
-from sklearn.linear_model import LinearRegression
-from sklearn.neighbors import KNeighborsRegressor
-from sklearn.linear_model import LogisticRegression
+
 import base64
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder, LabelEncoder
+
+
+
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import io
+from sklearn.tree import plot_tree
 
 
 
@@ -28,7 +37,7 @@ with st.sidebar:
     selected = option_menu('Menu',
                            ['Upload CSV',
                             'Heart Disease Prediction',
-                            'Data Analysis'],
+                            'Clean Data'],
                            menu_icon='hospital-fill',
                            icons=['cloud-upload', 'heart','data'],
                            default_index=0)
@@ -40,227 +49,120 @@ if selected == 'Upload CSV':
     
     st.title('Upload CSV')
 
-    # uploaded_files = st.file_uploader("Choose a CSV file", accept_multiple_files=True)
+    uploaded_files = st.file_uploader("Choose a CSV file", accept_multiple_files=True)
     
-    # if uploaded_files:
-    #     for uploaded_file in uploaded_files:
-    #         df = pd.read_csv(uploaded_file)
-    #         st.write(uploaded_file.name)
-    #         st.write(df.head(1))
-    #         col1, col2 = st.columns(2)
-        
-        #  def predict_single_variable(user_input1):
-        #     X = df[user_input1[0]].values.reshape(-1, 1)  # Biến độc lập
-        #     y = df[user_input1[1]].values  # Biến phụ thuộc
+    if uploaded_files:
+        for uploaded_file in uploaded_files:
+            df = pd.read_csv(uploaded_file)
+            st.write(uploaded_file.name)
+            st.write(df.head(1))
+            col1, col2 = st.columns(2)
+  
+        ml_algorithm = st.sidebar.selectbox("Chọn thuật toán", ["Linear Regression", "Logistic Regression", "KNN", "Decision Tree"])
 
-        #     model = LinearRegression()
-        #     model.fit(X, y)
+        if ml_algorithm == "Linear Regression":
+            dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc", df.columns)
+            independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
 
-        #     diab_diagnosis1 = model.predict(X)
+            if st.sidebar.button("Dự đoán"):
+                X = df[independent_vars]
+                y = df[dependent_var]
 
-        #     return diab_diagnosis1
-        
-        # def predict_knn_single_variable(user_input1):
-            # X = df[user_input1[0]].values.reshape(-1, 1)  # Biến độc lập
-            # y = df[user_input1[1]].values  # Biến phụ thuộc
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-            # model = KNeighborsRegressor(n_neighbors=5)
-            # model.fit(X, y)
+                model = LinearRegression()
+                model.fit(X_train, y_train)
 
-            # diab_diagnosis = model.predict(X)
+                y_pred = model.predict(X_test)
 
-            # return diab_diagnosis
-        
-        # def predict_logistic_single_variable(user_input1):
-            # X = df[user_input1[0]].values.reshape(-1, 1)  # Biến độc lập
-            # y = df[user_input1[1]].values  # Biến phụ thuộc
+                st.subheader("Kết quả dự đoán vs Giá trị thực tế")
+                result_df = pd.DataFrame({"Thực tế": y_test, "Dự đoán": y_pred})
+                st.write(result_df)
 
-            # model = LogisticRegression()
-            # model.fit(X, y)
+                plt.figure(figsize=(10, 6))
+                sns.scatterplot(x=y_test, y=y_pred)
+                sns.lineplot(x=y_test, y=y_test, color='red', label='Linear line')
+                plt.xlabel("Thực tế")
+                plt.ylabel("Dự đoán")
+                plt.title("Biểu đồ dự đoán vs Thực tế")
+                plt.legend()
+                st.pyplot(plt)
 
-            # diab_diagnosis = model.predict(X)
-        
-            # return diab_diagnosis
-        
-        
- 
-        
-    #     with col1:
-    #         st.write("Đơn biến")
-    #         Independent1 = st.selectbox("Biến độc lập", (df.columns),index=None,placeholder="Hãy chọn biến độc lập")
+        elif ml_algorithm == "Logistic Regression":
+            dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc (Chỉ phân loại)", df.columns)
+            independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
+
+            if st.sidebar.button("Dự đoán"):
+                X = df[independent_vars]
+                y = df[dependent_var]
+
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+                model = LogisticRegression()
+                model.fit(X_train, y_train)
+
+                y_pred = model.predict(X_test)
+
+                st.subheader("Kết quả dự đoán")
+                result_df = pd.DataFrame({"Thực tế": y_test, "Dự đoán": y_pred})
+                st.write(result_df)
+
+                plt.figure(figsize=(10, 6))
+                sns.heatmap(pd.crosstab(y_test, y_pred), annot=True, fmt='d')
+                plt.title("Ma trận Confusion")
+                plt.xlabel("Dự đoán")
+                plt.ylabel("Thực tế")
+                st.pyplot(plt)
+
+        elif ml_algorithm == "KNN":
+            dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc (Chỉ phân loại)", df.columns)
+            independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
+
+            if st.sidebar.button("Dự đoán"):
+                X = df[independent_vars]
+                y = df[dependent_var]
+
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+                model = KNeighborsClassifier()
+                model.fit(X_train, y_train)
+
+                y_pred = model.predict(X_test)
+
+                st.subheader("Kết quả dự đoán")
+                result_df = pd.DataFrame({"Thực tế": y_test, "Dự đoán": y_pred})
+                st.write(result_df)
+                plt.figure(figsize=(10, 6))
+                sns.heatmap(pd.crosstab(y_test, y_pred), annot=True, fmt='d')
+                plt.title("Ma trận Confusion")
+                plt.xlabel("Dự đoán")
+                plt.ylabel("Thực tế")
+                st.pyplot(plt)
+        elif ml_algorithm == "Decision Tree":
+            dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc (Chỉ phân loại)", df.columns)
+            independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
+
+            if st.sidebar.button("Dự đoán"):
+                X = df[independent_vars]
+                y = df[dependent_var]
+
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+                model = DecisionTreeClassifier()
+                model.fit(X_train, y_train)
+
+                y_pred = model.predict(X_test)
+
+                st.subheader("Kết quả dự đoán")
+                result_df = pd.DataFrame({"Thực tế": y_test, "Dự đoán": y_pred})
+                st.write(result_df)
+
+                # In ra cây quyết định
+                plt.figure(figsize=(20, 10))
+                plot_tree(model, filled=True, feature_names=X.columns.tolist(), class_names=y.unique().tolist())
+                st.pyplot(plt)
     
-    #     with col1:    
-    #         Dependent1 = st.selectbox("Biến phụ thuộc", (df.columns),index=None,placeholder="Hãy chọn biến phụ thuộc")
-       
-    #     with col1:    
-    #         MH = st.selectbox("Mô hình",("Linear Regression", "KNN", "Logistics regression"),index=None,placeholder="Hãy chọn mô hình")
-
-
-            # if MH == "Linear Regression":
-                # if st.button('Kết quả đơn biến'): 
-                #     user_input1 = [Independent1, Dependent1]
-                #     diab_diagnosis1 = predict_single_variable(user_input1) 
-
-                #     plt.figure(figsize=(10, 6))
-                #     plt.scatter(df[user_input1[0]], df[user_input1[1]], color='blue', label='Actual data')
-                #     plt.plot(df[user_input1[0]], diab_diagnosis1, color='red', label='Predicted data')
-                #     plt.xlabel(user_input1[0])
-                #     plt.ylabel(user_input1[1])
-                #     plt.title('Linear Regression')
-                #     plt.legend()
-                #     plt.grid(True)
-                #     st.pyplot(plt)
-                    
-            # if MH == "KNN":
-                # if st.button('Kết quả đơn biến'): 
-                #     user_input1 = [Independent1, Dependent1]
-                #     diab_diagnosis1 = predict_knn_single_variable(user_input1) 
-
-                #     plt.figure(figsize=(10, 6))
-                #     plt.scatter(df[user_input1[0]], df[user_input1[1]], color='blue', label='Actual data')
-                #     plt.plot(df[user_input1[0]], diab_diagnosis1, color='red', label='Predicted data')
-                #     plt.xlabel(user_input1[0])
-                #     plt.ylabel(user_input1[1])
-                #     plt.title('KNN Regression')
-                #     plt.legend()
-                #     plt.grid(True)
-                #     st.pyplot(plt)
-                    
-            # if MH == "Logistics regression":
-                # if st.button('Kết quả đơn biến'): 
-                #     user_input1 = [Independent1, Dependent1]
-                #     diab_diagnosis1 = predict_logistic_single_variable(user_input1) 
-
-                #     plt.figure(figsize=(10, 6))
-                #     plt.scatter(df[user_input1[0]], df[user_input1[1]], color='blue', label='Actual data')
-                #     plt.plot(df[user_input1[0]],  diab_diagnosis1, color='red', label='Logistic Regression')
-                #     plt.xlabel(user_input1[0])
-                #     plt.ylabel(user_input1[1])
-                #     plt.title('Logistic Regression')
-                #     plt.legend()
-                #     plt.grid(True)
-                #     st.pyplot(plt)
-                
-
-    #     def predict_multi_variable(user_input2):
-    #         # Lấy dữ liệu từ file CSV đã tải lên
-    #         X = df[[user_input2[0], user_input2[1]]].values  # Biến độc lập
-    #         y = df[user_input2[2]].values  # Biến phụ thuộc
-            
-    #         model = LinearRegression()
-    #         model.fit(X, y)
-
-    #         diab_diagnosis2 = model.predict(X)
-
-    #         # Vẽ đường hồi quy
-    #         x_min, x_max = X[:, 0].min(), X[:, 0].max()
-    #         y_min, y_max = X[:, 1].min(), X[:, 1].max()
-    #         xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), np.linspace(y_min, y_max, 100))
-    #         Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
-    #         Z = Z.reshape(xx.shape)
-
-    #         return diab_diagnosis2, xx, yy, Z
-        
-    #     def predict_knn_multi_variable(user_input2):
-    #         X = df[[user_input2[0], user_input2[1]]].values  # Biến độc lập
-    #         y = df[user_input2[2]].values  # Biến phụ thuộc
-            
-    #         model = KNeighborsRegressor(n_neighbors=5)
-    #         model.fit(X, y)
-
-    #         diab_diagnosis2 = model.predict(X)
-
-    #         x_min, x_max = X[:, 0].min(), X[:, 0].max()
-    #         y_min, y_max = X[:, 1].min(), X[:, 1].max()
-    #         xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), np.linspace(y_min, y_max, 100))
-    #         Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
-    #         Z = Z.reshape(xx.shape)
-
-    #         return diab_diagnosis2, xx, yy, Z
-        
-    #     def predict_logistic_multi_variable(user_input2):
-    #         X = df[[user_input2[0], user_input2[1]]].values  # Biến độc lập
-    #         y = df[user_input2[2]].values  # Biến phụ thuộc
-            
-    #         model = LogisticRegression()
-    #         model.fit(X, y)
-
-    #         diab_diagnosis2 = model.predict(X)
-
-    #         x_min, x_max = X[:, 0].min(), X[:, 0].max()
-    #         y_min, y_max = X[:, 1].min(), X[:, 1].max()
-    #         xx, yy = np.meshgrid(np.linspace(x_min, x_max, 100), np.linspace(y_min, y_max, 100))
-    #         Z = model.predict(np.c_[xx.ravel(), yy.ravel()])
-    #         Z = Z.reshape(xx.shape)
-
-    #         return diab_diagnosis2, xx, yy, Z
-
-    #     with col2:
-    #         st.write("Đa biến")
-    #         Independent2 = st.selectbox("Biến độc lập ", (df.columns),index=None,placeholder="Hãy chọn biến độc lập ")
-            
-    #     with col2:
-    #         Independent3 = st.selectbox("Biến độc lập ", (df.columns),index=None,placeholder="Hãy chọn biến độc lập")
-            
-    #     with col2:
-    #         Dependent2 = st.selectbox("Biến phụ thuộc ", (df.columns),index=None,placeholder="Hãy chọn biến phụ thuộc ")
-            
-    #     with col2:
-            # MH1 = st.selectbox("Mô hình",("Linear Regression ", "KNN ", "Logistics regression "),index=None,placeholder="Hãy chọn mô hình")
-
-            # if MH1 == "Linear Regression ":
-            #     if st.button('Kết quả đa biến'):
-            #         user_input2 = [Independent2, Independent3, Dependent2]
-            #         diab_diagnosis2, xx, yy, Z = predict_multi_variable(user_input2) 
-
-            #         fig = plt.figure(figsize=(10, 6))
-            #         ax = fig.add_subplot(111, projection='3d')
-            #         ax.scatter(df[user_input2[0]], df[user_input2[1]], df[user_input2[2]], color='blue', label='Actual data')
-            #         ax.scatter(df[user_input2[0]], df[user_input2[1]], diab_diagnosis2, color='red', label='Predicted data')
-            #         ax.plot_surface(xx, yy, Z, alpha=0.5, cmap='viridis', label='Regression Plane')
-            #         ax.set_xlabel(user_input2[0])
-            #         ax.set_ylabel(user_input2[1])
-            #         ax.set_zlabel(user_input2[2])
-            #         ax.set_title('Linear Regression')
-            #         ax.legend()
-            #         st.pyplot(fig)
-                    
-            # if MH1 == "KNN ":
-            #     if st.button('Kết quả đa biến'):
-            #         user_input2 = [Independent2, Independent3, Dependent2]
-            #         diab_diagnosis2, xx, yy, Z = predict_knn_multi_variable(user_input2) 
-
-            #         fig = plt.figure(figsize=(10, 6))
-            #         ax = fig.add_subplot(111, projection='3d')
-            #         ax.scatter(df[user_input2[0]], df[user_input2[1]], df[user_input2[2]], color='blue', label='Actual data')
-            #         ax.scatter(df[user_input2[0]], df[user_input2[1]], diab_diagnosis2, color='red', label='Predicted data')
-            #         ax.plot_surface(xx, yy, Z, alpha=0.5, cmap='viridis', label='Regression Plane')
-            #         ax.set_xlabel(user_input2[0])
-            #         ax.set_ylabel(user_input2[1])
-            #         ax.set_zlabel(user_input2[2])
-            #         ax.set_title('KNN Regression')
-            #         ax.legend()
-            #         st.pyplot(fig)
-                    
-            # if MH1 == "Logistics regression ":
-            #     if st.button('Kết quả đa biến'):
-            #         user_input2 = [Independent2, Independent3, Dependent2]
-            #         diab_diagnosis2, xx, yy, Z = predict_logistic_multi_variable(user_input2) 
-
-            #         fig = plt.figure(figsize=(10, 6))
-            #         ax = fig.add_subplot(111, projection='3d')
-            #         ax.scatter(df[user_input2[0]], df[user_input2[1]], df[user_input2[2]], color='blue', label='Actual data')
-            #         ax.scatter(df[user_input2[0]], df[user_input2[1]], diab_diagnosis2, color='red', label='Predicted data')
-            #         ax.plot_surface(xx, yy, Z, alpha=0.5, cmap='viridis', label='Regression Plane')
-            #         ax.set_xlabel(user_input2[0])
-            #         ax.set_ylabel(user_input2[1])
-            #         ax.set_zlabel(user_input2[2])
-            #         ax.set_title('Linear Regression')
-            #         ax.legend()
-            #         st.pyplot(fig)
-    
-#----------------------------------------------------------------------------------------------------------    
-
+#---------------
 if selected == 'Heart Disease Prediction':
 
     # page title#
@@ -329,7 +231,7 @@ if selected == 'Heart Disease Prediction':
 
 #----------------------------------------------------------------------------------------------------------    
 
-if selected == 'Data Analysis':
+if selected == 'Clean Data':
     
     st.title('Clean Data')
 
