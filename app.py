@@ -160,7 +160,8 @@ if selected == 'Upload CSV':
                 # In ra cây quyết định
                 plt.figure(figsize=(20, 10))
                 plot_tree(model, filled=True, feature_names=X.columns.tolist(), class_names=y.unique().tolist())
-                st.pyplot(plt)
+                st.pyplot(plt)      
+
     
 #---------------
 if selected == 'Heart Disease Prediction':
@@ -243,26 +244,50 @@ if selected == 'Clean Data':
         
         for uploaded_file in uploaded_files:
             df = pd.read_csv(uploaded_file)
-            st.write(uploaded_file.name)
-            st.write("Hiển thị 5 hàng đầu tiên của dataset")
-            st.write(df.head(5))
-            st.write("Số hàng và số cột trong dataset")
-            st.write(df.shape)
-            st.write("Kiểu dữ liệu của các cột trong dataset")
-            st.write(df.dtypes)
-            st.write("Kiểm tra missing values")
-            st.write(df.isnull().sum())
-            st.write("Mô tả dữ liệu")
+            # st.write(uploaded_file.name)
+            # st.write("Hiển thị 5 hàng đầu tiên của dataset")
+            # st.write(df.head(5))
+            # st.write("Số hàng và số cột trong dataset")
+            # st.write(df.shape)
+            # st.write("Kiểu dữ liệu của các cột trong dataset")
+            # st.write(df.dtypes)
+            # st.write("Kiểm tra missing values")
+            # st.write(df.isnull().sum())
+            # st.write("Mô tả dữ liệu")
+            # st.write(df.describe())
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.header(f"{df.shape[1]} hàng đầu")
+                st.write(df.head(df.shape[1]))
+                st.write(f" ( {df.shape[0]} Hàng, {df.shape[1]} Cột )") 
+
+            with col2: 
+                st.header("Kiểu dữ liệu")
+                st.write(df.dtypes)
+
+            # Hiển thị mô tả dữ liệu
+            st.header("Mô tả dữ liệu:")
             st.write(df.describe())
-           
-            
-            
+        
+            # Kiểm tra missing values và hiển thị
+            st.header("Kiểm tra missing values:")
+            missing_values = df.isnull().sum().to_frame().T
+
+            if missing_values.empty:
+                st.write("Không có missing values trong dataset.")
+            else:
+                st.write(missing_values)
+
             
             # Hàm xóa cột
             def remove_col(my_df, unwanted_col):
                 my_df = my_df.drop(columns=unwanted_col, errors='ignore')
                 return my_df
             
+#------------------------------------------------------------------            
+
             # Hàm điền giá trị null
             def fill_null_values(my_df, selected_columns):
                 for col in selected_columns:
@@ -408,6 +433,7 @@ if selected == 'Clean Data':
         
             with tab1:
                 st.write("Remove Columns")
+                st.write(st.session_state.my_df.shape)
                 unwanted_col = st.multiselect("Remove column", st.session_state.my_df.columns, key="deleted_columns")
                 if st.button('Remove'):
                     st.session_state.my_df = remove_col(st.session_state.my_df, unwanted_col)
@@ -454,11 +480,12 @@ if selected == 'Clean Data':
     
                 with col1:
                     st.write("Kiểm tra missing values")
-                    st.write(st.session_state.my_df.isnull().sum())
+                    st.write(st.session_state.my_df.isnull().sum().to_frame().T)
 
                 with col2:
+
                     selected_columns = st.multiselect("Select columns to remove rows with null values:", st.session_state.my_df.columns, key="RemoveRowsNull")
-                    
+                 
                     # Lấy mask cho các hàng có giá trị null trong các cột đã chọn
                     mask = st.session_state.my_df[selected_columns].isnull().any(axis=1)
                     
@@ -476,7 +503,7 @@ if selected == 'Clean Data':
 
                 # Hiển thị danh sách các cột và kiểu dữ liệu hiện tại
                 st.write("Current data types:")
-                st.write(st.session_state.my_df.dtypes)
+                st.write(st.session_state.my_df.dtypes.to_frame().T)
 
                 selected_column = st.selectbox("Column to convert", st.session_state.my_df.columns, key="convert_column")
                 new_dtype = st.selectbox("New data type", ["int32", "int64", "float32", "float64", "object"], key="new_dtype")
@@ -489,21 +516,25 @@ if selected == 'Clean Data':
                 
             with tab6:
                 st.header("Check Outliers")
-                st.write("Choose column to check outliers")
-                
-                selected_column = st.selectbox("Column", st.session_state.my_df.columns, key="outlier_select")
-                
-                # tạo 1 container chứa biểu đồ trong trường hợp có outlier
-                container_diagram =  st.empty()
-                
-                with container_diagram.container():
-                    check_outliers_plot(st.session_state.my_df, selected_column)
+
+                col1, col2 = st.columns(2)
+
+                with col1: 
+                    st.write("Choose column to check outliers")
+                    selected_column = st.selectbox("Column", st.session_state.my_df.columns, key="outlier_select")
+
+                with col2: 
+                    # tạo 1 container chứa biểu đồ trong trường hợp có outlier
+                    container_diagram =  st.empty()
                     
-                if st.button('Handle Outliers'):
-                    st.session_state.my_df = remove_outliers(df, selected_column)
-                    st.write('remove successfully')
-                    # sau khi remove successfully thì container sẽ được làm rỗng
-                    container_diagram.empty()
+                    with container_diagram.container():
+                        check_outliers_plot(st.session_state.my_df, selected_column)
+                        
+                    if st.button('Handle Outliers'):
+                        st.session_state.my_df = remove_outliers(df, selected_column)
+                        st.write('remove successfully')
+                        # sau khi remove successfully thì container sẽ được làm rỗng
+                        container_diagram.empty()
             with tab7:
                 st.header("Encode Categorical Variables")
                 
@@ -551,7 +582,8 @@ if selected == 'Clean Data':
                             download_link = get_download_link(st.session_state.my_df, filename, "Click here to download the cleaned dataset")
                             st.markdown(download_link, unsafe_allow_html=True)
                 else:
-                    st.warning("No cleaned dataset available. Please clean your data first.")
+                    if st.session_state.my_df is None:
+                        st.warning("No cleaned dataset available. Please clean your data first.")
             
             
             
