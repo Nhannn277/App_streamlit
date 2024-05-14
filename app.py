@@ -242,24 +242,21 @@ if selected == 'Heart Disease Prediction':
 if selected == 'Clean Data':
     
     st.title('Clean Data')
-
     
     uploaded_files = st.file_uploader("Choose a CSV file", accept_multiple_files=True)
-    
 
     if uploaded_files:
-        
         for uploaded_file in uploaded_files:
             df = pd.read_csv(uploaded_file)
 
-             # Kiểm tra nếu session state chưa tồn tại, khởi tạo mới
+            # Kiểm tra nếu session state chưa tồn tại, khởi tạo mới
             if 'my_df' not in st.session_state:
-                st.session_state.my_df = pd.DataFrame()
+
                 st.session_state.my_df = df.copy()
 
             if 'deleted_columns' not in st.session_state:
-                st.session_state.deleted_columns = [] 
-
+                st.session_state.deleted_columns = []
+            
             col1, col2 = st.columns(2)
 
             with col1:
@@ -284,119 +281,23 @@ if selected == 'Clean Data':
             else:
                 st.write(missing_values)
 
-            tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Remove Columns", 
-                                                                        "Fill Null Values", 
-                                                                        "Handle duplicates", 
-                                                                        "Remove Rows with Null", 
-                                                                        "Change Data Types", 
-                                                                        "Check Outliers", 
-                                                                        "Encode Categorical Variables", 
-                                                                        "Save dataset"])
-
-            with tab1:
-                st.write("Remove Columns")
-                unwanted_col = st.multiselect("Remove column", st.session_state.my_df.columns, key="deleted_columns")
+            
+            option = st.sidebar.selectbox(
+                                            'Select an option:',
+                                            ["Remove Columns", "Fill Null Values", "Handle duplicates", 
+                                            "Remove Rows with Null", "Change Data Types", "Check Outliers", 
+                                            "Encode Categorical Variables", "Save dataset"]
+                                        )
+            
+            if option == "Remove Columns":
+                st.session_state.my_df = st.session_state.my_df
+                unwanted_col = st.multiselect("Select columns", st.session_state.my_df.columns, key="deleted_columns")
                 if st.button('Remove'):
                     st.session_state.my_df = remove_col(st.session_state.my_df, unwanted_col)
                     st.session_state.deleted_columns.extend(unwanted_col)
                     st.write(st.session_state.my_df.head(5))
-
-            with tab2:
-                st.header("Fill Null Values")
-                st.write(st.session_state.my_df.head(5))
-                st.write("Choose columns to fill null values")
-                selected_columns = st.multiselect("Columns", st.session_state.my_df.columns, key="fill_null_values")
-                if st.button('Fill Null Values'):
-                    # Áp dụng hàm fill_null_values cho các cột đã chọn
-                    filled_df = fill_null_values(st.session_state.my_df, selected_columns)
-                    # Cập nhật lại DataFrame
-                    st.session_state.my_df = filled_df
-                    st.write("Null values filled for selected columns")
-                    st.write(st.session_state.my_df.head(5))
-
-            
-            with tab3:
-                st.header("Handle Duplicates")
-
-                if st.button("Handle Duplicates"):
                     
-                    duplicate = st.session_state.my_df[st.session_state.my_df.duplicated(keep=False)]
-                    
-                    if duplicate.empty:
-                        st.write("Don't have duplicate")
-                    else:
-                        st.write('row sum: {}'.format(len(st.session_state.my_df)))
-                        #st.write('Have {} duplicates'.format(df.duplicated().sum()))  
-                        
-                        st.session_state.my_df = handle_duplicates(st.session_state.my_df)
-                        
-                        st.write('number of goods remaining after processing', len(st.session_state.my_df))
-                                    
-
-
-            with tab4:
-                st.header("Remove Rows with Null")
-                
-                col1 , col2 = st.columns(2)
-
-                with col1:
-                    st.write("Kiểm tra missing values")
-                    st.write(st.session_state.my_df.isnull().sum().to_frame().T)
-
-                with col2:
-
-                    selected_columns = st.multiselect("Select columns to remove rows with null values:", st.session_state.my_df.columns, key="RemoveRowsNull")
-                    
-                    # Lấy mask cho các hàng có giá trị null trong các cột đã chọn
-                    mask = st.session_state.my_df[selected_columns].isnull().any(axis=1)
-                    
-                    # Lấy DataFrame chứa các hàng có giá trị null
-                    rows_with_null = st.session_state.my_df[mask]
-                    
-                    if st.button("Remove Rows with Null"):
-                        # Xóa các hàng có giá trị null
-                        st.session_state.my_df = st.session_state.my_df.drop(rows_with_null.index)
-                        st.write("Rows with null values removed successfully.")
-            
-            with tab5:
-                st.header("Change Data Types")
-                st.write("Choose column and new data type:")
-
-                # Hiển thị danh sách các cột và kiểu dữ liệu hiện tại
-                st.write("Current data types:")
-                st.write(st.session_state.my_df.dtypes.to_frame().T)
-
-                selected_column = st.selectbox("Column to convert", st.session_state.my_df.columns, key="convert_column")
-                new_dtype = st.selectbox("New data type", ["int32", "int64", "float32", "float64", "object"], key="new_dtype")
-
-                if st.button("Convert"):
-                    # Áp dụng hàm convert_column_dtype cho cột được chọn
-                    st.session_state.my_df = convert_column_dtype(st.session_state.my_df, selected_column, new_dtype)
-                    st.write(f"Converted column '{selected_column}' to {new_dtype}")
-                    st.write(st.session_state.my_df.dtypes)
-                
-            with tab6:
-                st.header("Check Outliers")
-
-                col1, col2 = st.columns(2)
-
-                with col1: 
-                    st.write("Choose column to check outliers")
-                    selected_column = st.selectbox("Column", st.session_state.my_df.columns, key="outlier_select")
-
-                with col2: 
-                    # tạo 1 container chứa biểu đồ trong trường hợp có outlier
-                    container_diagram =  st.empty()
-                    
-                    with container_diagram.container():
-                        check_outliers_plot(st.session_state.my_df, selected_column)
-                        
-                    if st.button('Handle Outliers'):
-                        st.session_state.my_df = remove_outliers(df, selected_column)
-                        st.write('remove successfully')
-                        # sau khi remove successfully thì container sẽ được làm rỗng
-                        container_diagram.empty()
-            with tab7:
+            elif option == "Encode Categorical Variables":
                 st.header("Encode Categorical Variables")
                 
                 # Lựa chọn phương pháp mã hóa từ người dùng
@@ -420,36 +321,174 @@ if selected == 'Clean Data':
 
                 if st.button('Save'):
                     st.session_state.my_df = df_encoded
-
-            with tab8:
-                st.header("Save dataset")
-
-                # Kiểm tra nếu có DataFrame và đã clean data
-                if 'my_df' in st.session_state and st.session_state.my_df is not None:
-                    st.write("Your cleaned dataset:")
-                    st.write(st.session_state.my_df.head())
                     
-                    # Xác định tên file mặc định
-                    default_filename = None
-                    if uploaded_files:
-                        # Nếu có file tải lên, sử dụng tên file đầu tiên kèm theo "_cleaned.csv"
-                        default_filename = uploaded_files[0].name.split('.')[0] + "_cleaned.csv"
-                    filename = st.text_input("Enter a filename to save as:", default_filename)
-                    # Thêm nút để lưu dataset
-                    if st.button("Save Cleaned Dataset"):
-                        
-                        if filename.strip() == "":
-                            st.warning("Please enter a valid filename.")
-                        else:
-                            save_dataset(st.session_state.my_df, filename)
-                            
-                            # Hiển thị link để tải file về
-                            download_link = get_download_link(st.session_state.my_df, filename, "Click here to download the cleaned dataset")
-                            st.markdown(download_link, unsafe_allow_html=True)
-                else:
-                    if st.session_state.my_df is None:
-                        st.warning("No cleaned dataset available. Please clean your data first.")
+            # tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs(["Remove Columns", 
+            #                                                             "Fill Null Values", 
+            #                                                             "Handle duplicates", 
+            #                                                             "Remove Rows with Null", 
+            #                                                             "Change Data Types", 
+            #                                                             "Check Outliers", 
+            #                                                             "Encode Categorical Variables", 
+            #                                                             "Save dataset"])
             
+
+            # with tab1:
+            #     st.session_state.my_df = st.session_state.my_df
+            #     unwanted_col = st.multiselect("Select columns", st.session_state.my_df.columns, key="deleted_columns")
+            #     if st.button('Remove'):
+            #         st.session_state.my_df = remove_col(st.session_state.my_df, unwanted_col)
+            #         st.session_state.deleted_columns.extend(unwanted_col)
+            #         st.write(st.session_state.my_df.head(5))
+
+            # with tab2:
+            #     st.header("Fill Null Values")
+            #     st.write(st.session_state.my_df.head(5))
+            #     st.write("Choose columns to fill null values")
+            #     selected_columns = st.multiselect("Columns", st.session_state.my_df.columns, key="fill_null_values")
+            #     if st.button('Fill Null Values'):
+            #         # Áp dụng hàm fill_null_values cho các cột đã chọn
+            #         filled_df = fill_null_values(st.session_state.my_df, selected_columns)
+            #         # Cập nhật lại DataFrame
+            #         st.session_state.my_df = filled_df
+            #         st.write("Null values filled for selected columns")
+            #         st.write(st.session_state.my_df.head(5))
+
+            
+            # with tab3:
+            #     st.header("Handle Duplicates")
+
+            #     if st.button("Handle Duplicates"):
+                    
+            #         duplicate = st.session_state.my_df[st.session_state.my_df.duplicated(keep=False)]
+                    
+            #         if duplicate.empty:
+            #             st.write("Don't have duplicate")
+            #         else:
+            #             st.write('row sum: {}'.format(len(st.session_state.my_df)))
+            #             #st.write('Have {} duplicates'.format(df.duplicated().sum()))  
+                        
+            #             st.session_state.my_df = handle_duplicates(st.session_state.my_df)
+                        
+            #             st.write('number of goods remaining after processing', len(st.session_state.my_df))
+                                    
+
+
+            # with tab4:
+            #     st.header("Remove Rows with Null")
+                
+            #     col1 , col2 = st.columns(2)
+
+            #     with col1:
+            #         st.write("Kiểm tra missing values")
+            #         st.write(st.session_state.my_df.isnull().sum().to_frame().T)
+
+            #     with col2:
+
+            #         selected_columns = st.multiselect("Select columns to remove rows with null values:", st.session_state.my_df.columns, key="RemoveRowsNull")
+                    
+            #         # Lấy mask cho các hàng có giá trị null trong các cột đã chọn
+            #         mask = st.session_state.my_df[selected_columns].isnull().any(axis=1)
+                    
+            #         # Lấy DataFrame chứa các hàng có giá trị null
+            #         rows_with_null = st.session_state.my_df[mask]
+                    
+            #         if st.button("Remove Rows with Null"):
+            #             # Xóa các hàng có giá trị null
+            #             st.session_state.my_df = st.session_state.my_df.drop(rows_with_null.index)
+            #             st.write("Rows with null values removed successfully.")
+            
+            # with tab5:
+            #     st.header("Change Data Types")
+            #     st.write("Choose column and new data type:")
+
+            #     # Hiển thị danh sách các cột và kiểu dữ liệu hiện tại
+            #     st.write("Current data types:")
+            #     st.write(st.session_state.my_df.dtypes.to_frame().T)
+
+            #     selected_column = st.selectbox("Column to convert", st.session_state.my_df.columns, key="convert_column")
+            #     new_dtype = st.selectbox("New data type", ["int32", "int64", "float32", "float64", "object"], key="new_dtype")
+
+            #     if st.button("Convert"):
+            #         # Áp dụng hàm convert_column_dtype cho cột được chọn
+            #         st.session_state.my_df = convert_column_dtype(st.session_state.my_df, selected_column, new_dtype)
+            #         st.write(f"Converted column '{selected_column}' to {new_dtype}")
+            #         st.write(st.session_state.my_df.dtypes)
+                
+            # with tab6:
+            #     st.header("Check Outliers")
+
+            #     col1, col2 = st.columns(2)
+
+            #     with col1: 
+            #         st.write("Choose column to check outliers")
+            #         selected_column = st.selectbox("Column", st.session_state.my_df.columns, key="outlier_select")
+
+            #     with col2: 
+            #         # tạo 1 container chứa biểu đồ trong trường hợp có outlier
+            #         container_diagram =  st.empty()
+                    
+            #         with container_diagram.container():
+            #             check_outliers_plot(st.session_state.my_df, selected_column)
+                        
+            #         if st.button('Handle Outliers'):
+            #             st.session_state.my_df = remove_outliers(df, selected_column)
+            #             st.write('remove successfully')
+            #             # sau khi remove successfully thì container sẽ được làm rỗng
+            #             container_diagram.empty()
+            # with tab7:
+            #     st.header("Encode Categorical Variables")
+                
+            #     # Lựa chọn phương pháp mã hóa từ người dùng
+            #     encode_method = st.selectbox("Select encoding method:", ["One-Hot Encoding", "Ordinal Encoding", "Label Encoding"])
+
+            #     # Mã hóa dữ liệu theo phương pháp được chọn
+            #     if encode_method == "One-Hot Encoding":
+            #         column = st.selectbox("Select column to encode:", st.session_state.my_df.columns)
+            #         df_encoded = one_hot_encode(st.session_state.my_df, column)
+            #     elif encode_method == "Ordinal Encoding":
+            #         column = st.selectbox("Select column to encode:", st.session_state.my_df.columns)
+            #         df_encoded = ordinal_encode(st.session_state.my_df, column)
+            #     else:  # Label Encoding
+            #         column = st.selectbox("Select column to encode:", st.session_state.my_df.columns)
+            #         df_encoded = label_encode(st.session_state.my_df, column)
+
+            #     # Hiển thị kết quả
+                
+            #     st.write("Encoded DataFrame:")
+            #     st.write(df_encoded)
+
+            #     if st.button('Save'):
+            #         st.session_state.my_df = df_encoded
+
+            # with tab8:
+            #     st.header("Save dataset")
+
+            #     # Kiểm tra nếu có DataFrame và đã clean data
+            #     if 'my_df' in st.session_state and st.session_state.my_df is not None:
+            #         st.write("Your cleaned dataset:")
+            #         st.write(st.session_state.my_df.head())
+                    
+            #         # Xác định tên file mặc định
+            #         default_filename = None
+            #         if uploaded_files:
+            #             # Nếu có file tải lên, sử dụng tên file đầu tiên kèm theo "_cleaned.csv"
+            #             default_filename = uploaded_files[0].name.split('.')[0] + "_cleaned.csv"
+            #         filename = st.text_input("Enter a filename to save as:", default_filename)
+            #         # Thêm nút để lưu dataset
+            #         if st.button("Save Cleaned Dataset"):
+                        
+            #             if filename.strip() == "":
+            #                 st.warning("Please enter a valid filename.")
+            #             else:
+            #                 save_dataset(st.session_state.my_df, filename)
+                            
+            #                 # Hiển thị link để tải file về
+            #                 download_link = get_download_link(st.session_state.my_df, filename, "Click here to download the cleaned dataset")
+            #                 st.markdown(download_link, unsafe_allow_html=True)
+            #     else:
+            #         if st.session_state.my_df is None:
+            #             st.warning("No cleaned dataset available. Please clean your data first.")
+               
     
     
             
