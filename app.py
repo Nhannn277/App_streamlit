@@ -28,6 +28,7 @@ from controller.cleanDataController import (
     check_outliers_plot, 
     convert_column_dtype 
 )
+from controller.trainModelController import trainModelInterface
 
 st.set_page_config(page_title="Health Assistant", layout="wide", page_icon="🧑‍⚕️")
 
@@ -46,7 +47,7 @@ with st.sidebar: selected = option_menu('Menu',
                                             'Clean Data'
                                         ],
                                         menu_icon='hospital-fill',
-                                        icons=['cloud-upload', 'heart','data'],
+                                        icons=['cloud-upload', 'heart','broom'],
                                         default_index=0)
 
 
@@ -69,110 +70,21 @@ if selected == 'Upload CSV':
                                             [
                                                 "Linear Regression", 
                                                 "Logistic Regression", 
-                                                "KNN", "Decision Tree"
+                                                "KNN", 
+                                                "Decision Tree"
                                              ])
 
-        if ml_algorithm == "Linear Regression":
-            dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc", df.columns)
-            independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
-
+        dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc", df.columns)
+        independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
+        
+        null_columns = [col for col in independent_vars if df[col].isnull().any()]
+        if null_columns:
+            st.warning(f"cột {', '.join(null_columns)} có chứa giá trị null không thể thực hiện huấn luyện")
+            st.warning('Vui lòng làm sạch dữ liệu trước khi huấn luyện')
+        else:
             if st.sidebar.button("Dự đoán"):
-                X = df[independent_vars]
-                y = df[dependent_var]
-
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-                model = LinearRegression()
-                model.fit(X_train, y_train)
-
-                y_pred = model.predict(X_test)
-
-                st.subheader("Kết quả dự đoán vs Giá trị thực tế")
-                result_df = pd.DataFrame({"Thực tế": y_test, "Dự đoán": y_pred})
-                st.write(result_df)
-
-                plt.figure(figsize=(10, 6))
-                sns.scatterplot(x=y_test, y=y_pred)
-                sns.lineplot(x=y_test, y=y_test, color='red', label='Linear line')
-                plt.xlabel("Thực tế")
-                plt.ylabel("Dự đoán")
-                plt.title("Biểu đồ dự đoán vs Thực tế")
-                plt.legend()
-                st.pyplot(plt)
-
-        elif ml_algorithm == "Logistic Regression":
-            dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc (Chỉ phân loại)", df.columns)
-            independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
-
-            if st.sidebar.button("Dự đoán"):
-                X = df[independent_vars]
-                y = df[dependent_var]
-
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-                model = LogisticRegression()
-                model.fit(X_train, y_train)
-
-                y_pred = model.predict(X_test)
-
-                st.subheader("Kết quả dự đoán")
-                result_df = pd.DataFrame({"Thực tế": y_test, "Dự đoán": y_pred})
-                st.write(result_df)
-
-                plt.figure(figsize=(10, 6))
-                sns.heatmap(pd.crosstab(y_test, y_pred), annot=True, fmt='d')
-                plt.title("Ma trận Confusion")
-                plt.xlabel("Dự đoán")
-                plt.ylabel("Thực tế")
-                st.pyplot(plt)
-
-        elif ml_algorithm == "KNN":
-            dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc (Chỉ phân loại)", df.columns)
-            independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
-
-            if st.sidebar.button("Dự đoán"):
-                X = df[independent_vars]
-                y = df[dependent_var]
-
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-                model = KNeighborsClassifier()
-                model.fit(X_train, y_train)
-
-                y_pred = model.predict(X_test)
-
-                st.subheader("Kết quả dự đoán")
-                result_df = pd.DataFrame({"Thực tế": y_test, "Dự đoán": y_pred})
-                st.write(result_df)
-                plt.figure(figsize=(10, 6))
-                sns.heatmap(pd.crosstab(y_test, y_pred), annot=True, fmt='d')
-                plt.title("Ma trận Confusion")
-                plt.xlabel("Dự đoán")
-                plt.ylabel("Thực tế")
-                st.pyplot(plt)
-        elif ml_algorithm == "Decision Tree":
-            dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc (Chỉ phân loại)", df.columns)
-            independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
-
-            if st.sidebar.button("Dự đoán"):
-                X = df[independent_vars]
-                y = df[dependent_var]
-
-                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
-                model = DecisionTreeClassifier()
-                model.fit(X_train, y_train)
-
-                y_pred = model.predict(X_test)
-
-                st.subheader("Kết quả dự đoán")
-                result_df = pd.DataFrame({"Thực tế": y_test, "Dự đoán": y_pred})
-                st.write(result_df)
-
-                # In ra cây quyết định
-                plt.figure(figsize=(20, 10))
-                plot_tree(model, filled=True, feature_names=X.columns.tolist(), class_names=y.unique().tolist())
-                st.pyplot(plt)      
+                trainModelInterface(df = df, ml_algorithm= ml_algorithm, dependent_var= dependent_var, independent_vars= independent_vars)
+             
 
     
 #---------------
