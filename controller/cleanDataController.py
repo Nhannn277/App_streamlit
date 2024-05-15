@@ -95,7 +95,8 @@ def convert_column_dtype(my_df, column, new_dtype):
 
 # Hàm check outliers
 def check_outliers_plot(my_df, selected_column):
-    if my_df[selected_column].dtype == "int64" or my_df[selected_column].dtype == "float64" or my_df[selected_column].dtype == "float32" or my_df[selected_column].dtype == "int32":
+    if  st.session_state.my_df[selected_column].dtype == "int64" or  st.session_state.my_df[selected_column].dtype == "float64" or  st.session_state.my_df[selected_column].dtype == "float32" or  st.session_state.my_df[selected_column].dtype == "int32":
+                                         
         # Tính giá trị Q1, Q3 và IQR
         Q1 = my_df[selected_column].quantile(0.25)
         Q3 = my_df[selected_column].quantile(0.75)
@@ -111,9 +112,18 @@ def check_outliers_plot(my_df, selected_column):
         if outliers.empty:
             st.write("No outliers found.")
         else:
-            # Vẽ biểu đồ box plot
-            fig = px.box(my_df, y=selected_column, title=f'Box plot of {selected_column}')
-            st.plotly_chart(fig)
+            container_diagram =  st.empty()
+            with container_diagram.container():
+                fig = px.box(my_df, y=selected_column, title=f'Box plot of {selected_column}')
+                st.plotly_chart(fig)
+                
+                if st.button('Handles Outliers'):
+                    st.session_state.my_df = remove_outliers(st.session_state.my_df, selected_column)
+                    st.write('remove successfully')
+                    # sau khi remove successfully thì container sẽ được làm rỗng
+                    container_diagram.empty()
+    else:
+        st.write("Kiểu dữ liệu của cột không phải là số")
         
 def remove_outliers(my_df, selected_column):
     # Tính giá trị Q1, Q3 và IQR
