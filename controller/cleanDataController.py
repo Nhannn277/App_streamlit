@@ -21,30 +21,54 @@ def remove_col(my_df, unwanted_col):
     return my_df
 
 # Hàm điền giá trị null
+# def fill_null_values(my_df, selected_columns):
+#     for col in selected_columns:
+#         if my_df[col].dtype == "object":
+#             mode_val = my_df[col].mode()[0]
+#             my_df[col].fillna(mode_val, inplace=True)
+#         if my_df[col].dtype == "int64" or my_df[col].dtype == "float64":  # Nếu cột là số
+#             unique_values = my_df[col].dropna().unique()
+#             if len(unique_values) == 2 and set(unique_values) == {0, 1}:  # Nếu chỉ có 2 giá trị và là 0 hoặc 1
+#                 mode_val = my_df[col].mode()[0]  # Lấy mode (giá trị xuất hiện nhiều nhất)
+#                 my_df[col].fillna(mode_val, inplace=True)
+#         if my_df[col].dtype == "int64" or my_df[col].dtype == "int32":  # Nếu cột là số nguyên
+#             if my_df[col].nunique() > 2:  # Nếu có nhiều hơn 2 giá trị khác nhau
+#                 mean_val = my_df[col].mean().astype(int)  # Lấy giá trị trung bình kiểu int
+#                 # Thay thế các giá trị 0 bằng giá trị trung bình
+#                 my_df[col] = my_df[col].replace(0, mean_val)
+#                 my_df[col].fillna(mean_val, inplace=True)  # Điền giá trị null bằng giá trị trung bình
+#         if my_df[col].dtype == "float64" or my_df[col].dtype == "float32":  # Nếu cột là số thực
+#             if my_df[col].nunique() > 2:  # Nếu có nhiều hơn 2 giá trị khác nhau
+#                 mean_val = my_df[col].mean().astype(float)  # Lấy giá trị trung bình kiểu float
+#                 # Thay thế các giá trị 0 bằng giá trị trung bình
+#                 my_df[col] = my_df[col].replace(0, mean_val)
+#                 my_df[col].fillna(mean_val, inplace=True)  # Điền giá trị null bằng giá trị trung bình
+#     return my_df
+
 def fill_null_values(my_df, selected_columns):
     for col in selected_columns:
-        if my_df[col].dtype == "object":
-            mode_val = my_df[col].mode()[0]
-            my_df[col].fillna(mode_val, inplace=True)
-        if my_df[col].dtype == "int64" or my_df[col].dtype == "float64":  # Nếu cột là số
+        dtype = my_df[col].dtype
+        
+        if dtype == "object":
+            fill_with_mode(my_df, col)
+        elif dtype in ["int64", "float64", "int32", "float32"]:
             unique_values = my_df[col].dropna().unique()
-            if len(unique_values) == 2 and set(unique_values) == {0, 1}:  # Nếu chỉ có 2 giá trị và là 0 hoặc 1
-                mode_val = my_df[col].mode()[0]  # Lấy mode (giá trị xuất hiện nhiều nhất)
-                my_df[col].fillna(mode_val, inplace=True)
-        if my_df[col].dtype == "int64" or my_df[col].dtype == "int32":  # Nếu cột là số nguyên
-            if my_df[col].nunique() > 2:  # Nếu có nhiều hơn 2 giá trị khác nhau
-                mean_val = my_df[col].mean().astype(int)  # Lấy giá trị trung bình kiểu int
-                # Thay thế các giá trị 0 bằng giá trị trung bình
-                my_df[col] = my_df[col].replace(0, mean_val)
-                my_df[col].fillna(mean_val, inplace=True)  # Điền giá trị null bằng giá trị trung bình
-        if my_df[col].dtype == "float64" or my_df[col].dtype == "float32":  # Nếu cột là số thực
-            if my_df[col].nunique() > 2:  # Nếu có nhiều hơn 2 giá trị khác nhau
-                mean_val = my_df[col].mean().astype(float)  # Lấy giá trị trung bình kiểu float
-                # Thay thế các giá trị 0 bằng giá trị trung bình
-                my_df[col] = my_df[col].replace(0, mean_val)
-                my_df[col].fillna(mean_val, inplace=True)  # Điền giá trị null bằng giá trị trung bình
+            
+            if len(unique_values) == 2 and set(unique_values) == {0, 1}:
+                fill_with_mode(my_df, col)
+            else:
+                fill_with_mean(my_df, col)
     return my_df
 
+def fill_with_mode(my_df, col):
+    mode_val = my_df[col].mode()[0]
+    my_df[col].fillna(mode_val, inplace=True)
+
+def fill_with_mean(my_df, col):
+    mean_val = my_df[col].mean().astype(my_df[col].dtype)
+    my_df[col] = my_df[col].replace(0, mean_val)
+    my_df[col].fillna(mean_val, inplace=True)
+    
 # Hàm ép kiểu
 def convert_column_dtype(my_df, column, new_dtype):
     try:
@@ -71,7 +95,8 @@ def convert_column_dtype(my_df, column, new_dtype):
 
 # Hàm check outliers
 def check_outliers_plot(my_df, selected_column):
-    if my_df[selected_column].dtype == "int64" or my_df[selected_column].dtype == "float64" or my_df[selected_column].dtype == "float32" or my_df[selected_column].dtype == "int32":
+    if  st.session_state.my_df[selected_column].dtype == "int64" or  st.session_state.my_df[selected_column].dtype == "float64" or  st.session_state.my_df[selected_column].dtype == "float32" or  st.session_state.my_df[selected_column].dtype == "int32":
+                                         
         # Tính giá trị Q1, Q3 và IQR
         Q1 = my_df[selected_column].quantile(0.25)
         Q3 = my_df[selected_column].quantile(0.75)
@@ -87,9 +112,18 @@ def check_outliers_plot(my_df, selected_column):
         if outliers.empty:
             st.write("No outliers found.")
         else:
-            # Vẽ biểu đồ box plot
-            fig = px.box(my_df, y=selected_column, title=f'Box plot of {selected_column}')
-            st.plotly_chart(fig)
+            container_diagram =  st.empty()
+            with container_diagram.container():
+                fig = px.box(my_df, y=selected_column, title=f'Box plot of {selected_column}')
+                st.plotly_chart(fig)
+                
+                if st.button('Handles Outliers'):
+                    st.session_state.my_df = remove_outliers(st.session_state.my_df, selected_column)
+                    st.write('remove successfully')
+                    # sau khi remove successfully thì container sẽ được làm rỗng
+                    container_diagram.empty()
+    else:
+        st.write("Kiểu dữ liệu của cột không phải là số")
         
 def remove_outliers(my_df, selected_column):
     # Tính giá trị Q1, Q3 và IQR
@@ -120,7 +154,6 @@ def get_download_link(my_df, filename, text):
 
 # Hàm xử lý duplicate
 def handle_duplicates(my_df):
-    
     # Drop duplicates
     my_df.drop_duplicates(keep= 'first', inplace=True)
     
