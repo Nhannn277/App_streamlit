@@ -2,7 +2,7 @@ import os
 import io
 import pickle
 import base64
-import graphviz
+# import graphviz
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -60,7 +60,7 @@ def check(df):
     else:
         independent_vars = []
         null_columns_independent_vars = []
-        st.warning('Vui lòng chọn một biến phụ thuộc hợp lệ.')
+        st.warning('Chọn mô hình khác')
         
     if len(independent_vars) == 0:
         pass
