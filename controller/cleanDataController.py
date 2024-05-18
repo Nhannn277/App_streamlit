@@ -110,7 +110,10 @@ def check_outliers_plot(my_df, selected_column):
         outliers = my_df[(my_df[selected_column] < lower_bound) | (my_df[selected_column] > upper_bound)]
         
         if outliers.empty:
-            st.write("No outliers found.")
+            container_diagram =  st.empty()
+            with container_diagram.container():
+                fig = px.box(my_df, y=selected_column, title=f'Box plot of {selected_column}')
+                st.plotly_chart(fig)
         else:
             container_diagram =  st.empty()
             with container_diagram.container():
