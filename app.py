@@ -2,7 +2,6 @@ import os
 import io
 import pickle
 import base64
-from matplotlib_venn import venn2, venn3
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -10,6 +9,7 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import seaborn as sns # type: ignore
 from sklearn.tree import plot_tree # type: ignore
+from matplotlib_venn import venn2, venn3
 from streamlit_option_menu import option_menu # type: ignore
 from sklearn.tree import DecisionTreeClassifier # type: ignore
 from sklearn.neighbors import KNeighborsClassifier # type: ignore
@@ -29,7 +29,7 @@ from controller.cleanDataController import (
     check_outliers_plot, 
     convert_column_dtype 
 )
-from controller.trainModelController import trainModelInterface
+from controller.trainModelController import check
 
 st.set_page_config(page_title="Health Assistant", layout="wide", page_icon="🧑‍⚕️")
 
@@ -67,28 +67,7 @@ if selected == 'Upload CSV':
             df = pd.read_csv(uploaded_file)
             st.write(uploaded_file.name)
             st.write(df.head(1))
-            col1, col2 = st.columns(2)
-  
-        ml_algorithm = st.sidebar.selectbox("Chọn thuật toán", 
-                                            [
-                                                "Linear Regression", 
-                                                "Logistic Regression", 
-                                                "KNN", 
-                                                "Decision Tree"
-                                             ])
-
-        dependent_var = st.sidebar.selectbox("Chọn biến phụ thuộc", df.columns)
-        independent_vars = st.sidebar.multiselect("Chọn biến độc lập", df.columns.drop(dependent_var))
-        
-        null_columns = [col for col in independent_vars if df[col].isnull().any()]
-        if null_columns:
-            st.warning(f"cột {', '.join(null_columns)} có chứa giá trị null không thể thực hiện huấn luyện")
-            st.warning('Vui lòng làm sạch dữ liệu trước khi huấn luyện')
-        else:
-            if st.sidebar.button("Dự đoán"):
-                trainModelInterface(df = df, ml_algorithm= ml_algorithm, dependent_var= dependent_var, independent_vars= independent_vars)
-             
-             
+            check(df)
 #---------------------------------------------------------------------------------------------------------- 
 
 
@@ -556,8 +535,10 @@ if selected == 'Clean Data':
 if selected == 'Merge Data':
     st.header("Merge Data")
 
-    uploaded_file1 = st.file_uploader("Upload the first CSV file", type=["csv"])
-    uploaded_file2 = st.file_uploader("Upload the second CSV file", type=["csv"])
+    st.header("Upload the first CSV file")
+    uploaded_file1 = st.file_uploader('',type=["csv"])
+    st.header("Upload the second CSV file")
+    uploaded_file2 = st.file_uploader(' ', type=["csv"])
 
     if uploaded_file1 is not None and uploaded_file2 is not None:
         df1 = pd.read_csv(uploaded_file1)
